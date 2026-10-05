@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우리반 레벨업 - 초등 6학년 학급 경제 & 게이미피케이션 플랫폼</title>
+  <meta name="description" content="학급 화폐와 게이미피케이션을 결합한 초등학교 6학년 학급 운영 및 경제 교실 웹 애플리케이션입니다.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- 축하 컨페티 폭죽 캔버스 -->
+  <canvas id="confetti-canvas"></canvas>
+
+  <!-- 글로벌 토스트 메시지 컨테이너 -->
+  <div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+  <!-- 최상단 헤더 네비게이션 -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <div class="brand-icon">🏰</div>
+        <div>
+          <h1 class="brand-title">
+            우리반 레벨업
+            <span class="brand-badge">6학년 1반</span>
+          </h1>
+          <div class="brand-sub">학급 화폐 & 게이미피케이션 다이어리</div>
+        </div>
+      </div>
+
+      <div class="mode-switch-wrapper">
+        <nav class="mode-switcher" aria-label="화면 모드 전환">
+          <button id="btn-mode-teacher" class="mode-btn active" type="button">
+            <span class="icon">👨‍🏫</span> 교사 모드
+          </button>
+          <button id="btn-mode-student" class="mode-btn" type="button">
+            <span class="icon">🎒</span> 학생 모드
+          </button>
+        </nav>
+        <button id="btn-reset-data" class="quick-reset-btn" type="button" title="예시 데이터로 초기화">
+          <span>🔄</span> 초기화
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- 메인 뷰 컨테이너 -->
+  <main class="main-wrapper">
+
+    <!-- ====================================================================
+         1. 교사 모드 대시보드 (Teacher Dashboard)
+         ==================================================================== -->
+    <section id="view-teacher" class="view-section active">
+      <!-- 상단 4대 통계 지표 -->
+      <div class="teacher-stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon-box blue">👥</div>
+          <div class="stat-info">
+            <div class="stat-label">전체 학생 수</div>
+            <div id="stat-total-students" class="stat-value">25명</div>
+            <div class="stat-sub">출석 인원 기준</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-box green">✓</div>
+          <div class="stat-info">
+            <div class="stat-label">오늘 1인 1역 실천율</div>
+            <div id="stat-task-progress" class="stat-value">0%</div>
+            <div id="stat-task-sub" class="stat-sub">(완료 0명 / 미완료 25명)</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-box gold">🪙</div>
+          <div class="stat-info">
+            <div class="stat-label">학급 총 유통 화폐</div>
+            <div id="stat-circulation" class="stat-value">0 G</div>
+            <div class="stat-sub">학생 보유 화폐 총합</div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon-box purple">🎁</div>
+          <div class="stat-info">
+            <div class="stat-label">오늘 지급된 보상 화폐</div>
+            <div id="stat-today-issued" class="stat-value">+0 G</div>
+            <div class="stat-sub">경험치 1:1 자동 적립</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 관리 액션 및 도구 바 -->
+      <div class="teacher-action-bar">
+        <div class="action-left">
+          <button id="btn-open-give-modal" class="btn btn-gold" type="button" onclick="openCurrencyModal('give')">
+            <span>💰</span> 선택 학생 화폐 지급
+          </button>
+          <button id="btn-open-shop-manage" class="btn btn-primary" type="button" onclick="openShopManageModal()">
+            <span>🛍️</span> 상점 상품 관리
+          </button>
+          <button id="btn-open-role-manage" class="btn btn-secondary" type="button" onclick="openRoleManageModal()">
+            <span>📋</span> 1인 1역 배정
+          </button>
+          <button class="btn btn-secondary" type="button" onclick="resetAllDailyTasks()">
+            <span>☀️</span> 오늘 역할 초기화
+          </button>
+        </div>
+
+        <div class="table-filter-bar">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="search-input" placeholder="이름 또는 번호 검색..." aria-label="학생 검색">
+          </div>
+          <select id="status-filter" class="select-filter" aria-label="역할 완료 상태 필터">
+            <option value="all">전체 상태</option>
+            <option value="undone">미완료 학생만 보기</option>
+            <option value="done">역할 완료자만 보기</option>
+          </select>
+          <select id="sort-select" class="select-filter" aria-label="정렬 기준">
+            <option value="no-asc">번호순 (1번부터)</option>
+            <option value="name-asc">이름 가나다순</option>
+            <option value="balance-desc">보유 잔액 많은 순</option>
+            <option value="level-desc">레벨/경험치 높은 순</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- 학생 목록 테이블 -->
+      <div class="table-card">
+        <div class="table-header-info">
+          <div class="table-title">
+            <span>📚 우리반 학생 명단</span>
+            <span id="selected-count-badge" class="selected-count-badge">0명 선택됨</span>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="student-table" aria-label="학생 관리 테이블">
+            <thead>
+              <tr>
+                <th style="width: 44px;">
+                  <input type="checkbox" id="select-all-students" onchange="toggleSelectAllStudents()" aria-label="전체 학생 선택">
+                </th>
+                <th style="width: 75px;">번호</th>
+                <th>학생 이름</th>
+                <th>레벨 (칭호)</th>
+                <th>현재 잔액</th>
+                <th>1인 1역</th>
+                <th>오늘 실천</th>
+                <th style="width: 170px;">빠른 관리</th>
+              </tr>
+            </thead>
+            <tbody id="student-table-body">
+              <!-- app.js에서 동적 생성 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         2. 학생 선택 화면 (Student Picker)
+         ==================================================================== -->
+    <section id="view-student-picker" class="view-section">
+      <div class="picker-banner">
+        <h2 class="picker-title">👋 나의 프로필 카드를 선택해 주세요!</h2>
+        <p class="picker-sub">내 번호와 이름을 누르면 나의 화폐 잔액과 오늘의 1인 1역 미션을 확인할 수 있어요.</p>
+      </div>
+
+      <div id="student-picker-grid" class="student-grid">
+        <!-- app.js에서 25명 카드 동적 렌더링 -->
+      </div>
+    </section>
+
+    <!-- ====================================================================
+         3. 학생 메인 대시보드 (Student Dashboard)
+         ==================================================================== -->
+    <section id="view-student-detail" class="view-section">
+      <!-- 상단 이전/전환 바 -->
+      <div class="student-back-bar">
+        <button class="back-btn" type="button" onclick="switchMode('student-picker')">
+          <span>←</span> 다른 학생 선택하기
+        </button>
+      </div>
+
+      <!-- 상단 프로필 영웅 카드 (Hero Banner) -->
+      <div class="student-hero-card">
+        <div class="hero-grid">
+          <div class="hero-profile-info">
+            <div id="hero-level-icon" class="hero-avatar">⭐</div>
+            <div>
+              <div class="hero-greeting">환영합니다! 오늘의 멋진 하루를 시작해요 ☀️</div>
+              <div class="hero-name-row">
+                <span id="hero-student-name" class="hero-student-name">김철수</span>
+                <span id="hero-student-number" style="opacity: 0.8; font-weight: 700;">1번</span>
+                <span id="hero-level-text" class="hero-level-chip">Lv.1 새싹 탐험가</span>
+              </div>
+              <!-- 경험치 진행률 -->
+              <div class="exp-progress-wrap">
+                <div class="exp-label-row">
+                  <span id="hero-exp-desc">다음 레벨까지 50 EXP 남음</span>
+                  <span id="hero-exp-progress">50%</span>
+                </div>
+                <div class="exp-bar-track">
+                  <div id="hero-exp-bar-fill" class="exp-bar-fill" style="width: 50%;"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 잔액 카드 -->
+          <div class="hero-balance-box">
+            <div class="hero-balance-label">내 보유 화폐 (사용 가능)</div>
+            <div class="hero-balance-val">
+              <span class="coin-icon" style="width: 32px; height: 32px; font-size: 1.1rem;">G</span>
+              <span id="hero-balance-val">0</span>
+            </div>
+            <div id="hero-total-earned" class="hero-balance-sub">총 누적 수입: 0 G</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 중앙 1인 1역 오늘의 할 일 카드 -->
+      <div id="daily-task-card" class="daily-task-card">
+        <div class="task-card-left">
+          <div class="task-icon-circle">📌</div>
+          <div>
+            <div class="task-header-row">
+              <span class="task-badge-title">나의 1인 1역 임무</span>
+            </div>
+            <div id="daily-task-name" class="task-role-name">역할명 로딩 중...</div>
+            <p id="daily-task-desc" class="task-role-desc">역할 설명이 표시됩니다.</p>
+          </div>
+        </div>
+        <div class="task-action-wrap">
+          <button id="btn-task-toggle" class="btn-task-toggle undone" type="button" onclick="toggleCurrentStudentTask()">
+            <span>오늘 할 일 완료하기 ✨</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- 하단 탭 메뉴 네비게이션 -->
+      <nav class="student-tabs-nav" aria-label="학생 세부 기능 탭">
+        <button class="student-tab-btn active" data-tab="shop" type="button" onclick="switchStudentTab('shop')">
+          <span>🛒</span> 학급 상점
+        </button>
+        <button class="student-tab-btn" data-tab="inventory" type="button" onclick="switchStudentTab('inventory')">
+          <span>🎒</span> 내 보관함 <span id="inventory-count-badge" class="tab-badge">0</span>
+        </button>
+        <button class="student-tab-btn" data-tab="history" type="button" onclick="switchStudentTab('history')">
+          <span>📜</span> 화폐 거래 기록
+        </button>
+      </nav>
+
+      <!-- 탭 1: 상점 상품 리스트 -->
+      <div id="student-tab-shop">
+        <div id="shop-grid-container" class="shop-grid">
+          <!-- app.js에서 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 탭 2: 내 보관함 (인벤토리) -->
+      <div id="student-tab-inventory" style="display: none;">
+        <div id="inventory-list-container" class="inventory-list">
+          <!-- app.js에서 렌더링 -->
+        </div>
+      </div>
+
+      <!-- 탭 3: 화폐 거래 내역 -->
+      <div id="student-tab-history" style="display: none;">
+        <div id="history-list-container" class="history-list">
+          <!-- app.js에서 렌더링 -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ====================================================================
+       모달 다이얼로그 (Modals)
+       ==================================================================== -->
+
+  <!-- 1. 화폐 지급/차감 모달 -->
+  <div id="modal-currency" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-currency-title">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3 id="modal-currency-title" class="modal-title">💰 학급 화폐 지급하기</h3>
+        <button class="modal-close-btn" type="button" onclick="closeModal('modal-currency')" aria-label="닫기">✕</button>
+      </div>
+      <form onsubmit="submitCurrencyAction(event)">
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label">대상 학생</label>
+            <div id="currency-target-label" style="font-size: 0.95rem; font-weight: 700; color: var(--primary); padding: 0.5rem 0.75rem; background: var(--primary-light); border-radius: var(--radius-md);">
+              선택된 학생
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="currency-amount-input" class="form-label">금액 (G)</label>
+            <input type="number" id="currency-amount-input" class="form-input" min="1" step="1" required value="50">
+            <div class="quick-amount-chips">
+              <button type="button" class="amount-chip" onclick="setQuickAmount(10)">+10 G</button>
+              <button type="button" class="amount-chip" onclick="setQuickAmount(30)">+30 G</button>
+              <button type="button" class="amount-chip" onclick="setQuickAmount(50)">+50 G</button>
+              <button type="button" class="amount-chip" onclick="setQuickAmount(100)">+100 G</button>
+              <button type="button" class="amount-chip" onclick="setQuickAmount(200)">+200 G</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="currency-reason-input" class="form-label">지급/차감 사유</label>
+            <input type="text" id="currency-reason-input" class="form-input" required value="1인 1역 성실 실천">
+            <div class="quick-amount-chips">
+              <button type="button" class="amount-chip" onclick="setQuickReason('1인 1역 성실 실천')">1인 1역 실천</button>
+              <button type="button" class="amount-chip" onclick="setQuickReason('수업 참여 및 발표 우수')">발표 우수</button>
+              <button type="button" class="amount-chip" onclick="setQuickReason('바른 태도 및 배려 칭찬')">친구 배려</button>
+              <button type="button" class="amount-chip" onclick="setQuickReason('숙제/준비물 완벽 준비')">숙제 완벽</button>
+              <button type="button" class="amount-chip" onclick="setQuickReason('교실 규칙 미준수')">규칙 미준수</button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('modal-currency')">취소</button>
+          <button id="btn-currency-submit" type="submit" class="btn btn-gold">처리 완료</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. 상점 상품 관리 모달 -->
+  <div id="modal-shop-manage" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-shop-title">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 id="modal-shop-title" class="modal-title">🛍️ 학급 상점 상품 관리</h3>
+        <button class="modal-close-btn" type="button" onclick="closeModal('modal-shop-manage')" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- 신규 상품 등록 폼 -->
+        <form id="form-add-item" onsubmit="handleAddShopItem(event)" style="background: var(--slate-50); padding: 1.25rem; border-radius: var(--radius-lg); margin-bottom: 1.5rem; border: 1px solid var(--slate-200);">
+          <strong style="display: block; font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--slate-900);">✨ 신규 상품 추가하기</strong>
+          <div style="display: grid; grid-template-columns: 80px 1.5fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+            <div>
+              <label for="new-item-icon" class="form-label">아이콘</label>
+              <input type="text" id="new-item-icon" class="form-input" placeholder="🎁" value="🎟️" style="text-align: center;">
+            </div>
+            <div>
+              <label for="new-item-name" class="form-label">상품명</label>
+              <input type="text" id="new-item-name" class="form-input" placeholder="예: 자리 바꾸기 우선권" required>
+            </div>
+            <div>
+              <label for="new-item-price" class="form-label">가격 (G)</label>
+              <input type="number" id="new-item-price" class="form-input" placeholder="300" min="10" step="10" required>
+            </div>
+            <div>
+              <label for="new-item-category" class="form-label">종류</label>
+              <select id="new-item-category" class="form-select">
+                <option value="coupon">혜택 쿠폰</option>
+                <option value="goods">학급 물품</option>
+              </select>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.75rem;">
+            <input type="text" id="new-item-desc" class="form-input" placeholder="상품에 대한 친절한 설명 (예: 다음 주 원하는 자리를 먼저 선택해요.)" required>
+            <button type="submit" class="btn btn-primary" style="flex-shrink: 0;">+ 상품 등록</button>
+          </div>
+        </form>
+
+        <strong style="display: block; font-size: 0.95rem; margin-bottom: 0.75rem; color: var(--slate-900);">📋 현재 등록된 상점 상품 목록</strong>
+        <div id="shop-manage-list">
+          <!-- app.js에서 렌더링 -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-shop-manage')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. 1인 1역 배정 관리 모달 -->
+  <div id="modal-role-manage" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-role-title">
+    <div class="modal-box modal-lg">
+      <div class="modal-header">
+        <h3 id="modal-role-title" class="modal-title">📋 1인 1역 배정 관리</h3>
+        <button class="modal-close-btn" type="button" onclick="closeModal('modal-role-manage')" aria-label="닫기">✕</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.88rem; color: var(--slate-600); margin-bottom: 1rem;">
+          25명 학생별로 담당할 1인 1역을 지정할 수 있습니다. 저장 시 학생의 메인 화면에 즉시 반영됩니다.
+        </p>
+        <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--slate-200); border-radius: var(--radius-md);">
+          <table class="student-table" style="font-size: 0.88rem;">
+            <thead>
+              <tr>
+                <th>번호</th>
+                <th>이름</th>
+                <th>담당 1인 1역</th>
+              </tr>
+            </thead>
+            <tbody id="role-assign-table-body">
+              <!-- app.js에서 렌더링 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeModal('modal-role-manage')">취소</button>
+        <button type="button" class="btn btn-primary" onclick="saveRoleAssignments()">배정 저장하기</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 스크립트 불러오기 -->
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
